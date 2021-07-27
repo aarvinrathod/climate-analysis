@@ -1,5 +1,6 @@
 from os import stat
 from flask import Flask
+from flask import json
 from flask.json import jsonify
 import numpy as np
 from numpy.core.defchararray import _startswith_dispatcher
@@ -37,6 +38,9 @@ def home():
          f"To find temperature data from a given start date use (use format YYYY-MM-DD) - /api/v1.0/<start><br/>"
          f"To find temperature data from a given range of date use (use format YYYY-MM-DD)- /api/v1.0/<start>/<end><br/>") 
 
+
+prcp_dict = {}
+
 @my_app.route("/api/v1.0/precipitation")
 def percipitation():
     session = Session(engine)
@@ -48,19 +52,25 @@ def percipitation():
     start_date = last_date - dt.timedelta(days=365)
     selection = [Measurement.date, Measurement.prcp]
     data = session.query(*selection).filter(Measurement.date <= last_date).filter(Measurement.date >= start_date).all()
+    
+    for row in data:
+        prcp_dict[row[0]] = row[1]
+
     session.close()
 
-    return jsonify(data)
+    return jsonify (prcp_dict)
 
 @my_app.route("/api/v1.0/stations")
 def stations():
     session = Session(engine)
 
-    names = session.query(Station.name).all()
-    names_list = list(np.ravel(names))
+    names = session.query(Station.station, Station.name).all()
+    names_dict = {}
+    for row in names:
+        names_dict[row[0]] = row[1]
     session.close()
 
-    return jsonify(names_list)
+    return jsonify (names_dict)
 
 @my_app.route("/api/v1.0/tobs")
 def tobs():
@@ -75,10 +85,13 @@ def tobs():
     final_date = final_date.date()
     first_date = final_date - dt.timedelta(days=365)
     data = session.query(Measurement.date, Measurement.tobs).filter(Measurement.date <= final_date).filter(Measurement.date >= first_date).all()
+    tobs_dict = {}
+    for row in data:
+        tobs_dict[row[0]] = row[1]
 
     session.close()
 
-    return jsonify(data)   
+    return jsonify (tobs_dict)  
 
 
 @my_app.route("/api/v1.0/<start>")
